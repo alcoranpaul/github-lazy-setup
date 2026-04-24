@@ -1,0 +1,134 @@
+# ============================================================
+#  gh-scaffold example config
+#  Copy this file, rename it to your-project.yaml, and edit.
+#  Usage: bash gh-scaffold.sh your-project.yaml
+# ============================================================
+
+repo:
+  name: my-project
+  description: A short description of what this project does
+  visibility: private # or public
+
+# ── Branches ──────────────────────────────────────────────────
+# main is always created first. Add as many as you need.
+branches:
+  - main
+  - develop
+  - staging
+
+# ── Labels ────────────────────────────────────────────────────
+# Use hex colors. These replace GitHub's default labels.
+labels:
+  - name: setup
+    color: "#0075ca"
+    description: Project setup and configuration
+  - name: frontend
+    color: "#d93f0b"
+    description: UI and client-side work
+  - name: backend
+    color: "#0052cc"
+    description: Server-side and database work
+  - name: auth
+    color: "#e4e669"
+    description: Authentication and permissions
+  - name: bug
+    color: "#b60205"
+    description: Something is broken
+  - name: feature
+    color: "#0e8a16"
+    description: New feature or enhancement
+  - name: polish
+    color: "#bfd4f2"
+    description: UI cleanup and refinement
+  - name: deployment
+    color: "#1d76db"
+    description: Hosting and CI/CD
+
+# ── Milestones ────────────────────────────────────────────────
+# due_date is optional. Format: YYYY-MM-DD
+milestones:
+  - title: Milestone 1 - Foundation
+    description: Project setup, tooling, and initial deploy
+  - title: Milestone 2 - Core Features
+    description: Main features of the application
+  - title: Milestone 3 - Polish & Launch
+    description: UI refinement, testing, and production deploy
+    due_date: "2024-12-31"
+
+# ── Issues ────────────────────────────────────────────────────
+# milestone must match a milestone title exactly.
+# labels must match defined label names above.
+issues:
+
+  # ── Milestone 1 - Foundation
+  - title: Initialize project repository
+    body: Set up the project folder structure, install dependencies, and configure
+      tooling.
+    milestone: Milestone 1 - Foundation
+    labels: [ setup ]
+
+  - title: Configure environment variables
+    body: Create .env file with required keys. Document all variables in README.
+    milestone: Milestone 1 - Foundation
+    labels: [ setup, backend ]
+
+  - title: Set up database schema
+    body: Write and run initial schema SQL. Create all core tables.
+    milestone: Milestone 1 - Foundation
+    labels: [ setup, backend ]
+
+  - title: Deploy blank app to hosting provider
+    body: Connect repo to hosting. Confirm successful blank deploy with environment
+      variables set.
+    milestone: Milestone 1 - Foundation
+    labels: [ setup, deployment ]
+
+  # ── Milestone 2 - Core Features
+  - title: Build login and signup pages
+    body: Create login and signup flows with form validation and error handling.
+    milestone: Milestone 2 - Core Features
+    labels: [ auth, frontend ]
+
+  - title: Protect routes based on auth state
+    body: Redirect unauthenticated users away from protected pages.
+    milestone: Milestone 2 - Core Features
+    labels: [ auth, backend ]
+
+  - title: Build main dashboard page
+    body: Overview page shown after login. Display key stats and navigation.
+    milestone: Milestone 2 - Core Features
+    labels: [ frontend ]
+
+  - title: Build core feature A
+    body: Describe what this feature does and what it connects to.
+    milestone: Milestone 2 - Core Features
+    labels: [ feature, frontend, backend ]
+
+  - title: Build core feature B
+    body: Describe what this feature does and what it connects to.
+    milestone: Milestone 2 - Core Features
+    labels: [ feature, frontend, backend ]
+
+  # ── Milestone 3 - Polish & Launch
+  - title: Add loading states and error messages
+    body: Spinners or skeletons while data loads. User-readable error messages on
+      failures.
+    milestone: Milestone 3 - Polish & Launch
+    labels: [ polish, frontend ]
+
+  - title: Seed demo data
+    body: Add realistic sample data so the app can be demonstrated without manual
+      setup.
+    milestone: Milestone 3 - Polish & Launch
+    labels: [ setup, backend ]
+
+  - title: End-to-end test all user flows
+    body: Manually test every flow from login to core features. Fix any broken paths.
+    milestone: Milestone 3 - Polish & Launch
+    labels: [ polish ]
+
+  - title: Final production deploy and smoke test
+    body: Deploy to production. Verify all env variables. Test critical paths on
+      live URL.
+    milestone: Milestone 3 - Polish & Launch
+    labels: [ deployment ]
