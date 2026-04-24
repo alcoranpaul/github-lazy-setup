@@ -54,9 +54,9 @@ fi
 echo "📄 Reading config from $YAML_FILE"
 
 # ── Parse repo config ──────────────────────────────────────────
-REPO_NAME=$(yq '.repo.name' "$YAML_FILE")
-REPO_DESC=$(yq '.repo.description' "$YAML_FILE")
-REPO_VISIBILITY=$(yq '.repo.visibility' "$YAML_FILE")
+REPO_NAME=$(yq -r '.repo.name' "$YAML_FILE")
+REPO_DESC=$(yq -r '.repo.description' "$YAML_FILE")
+REPO_VISIBILITY=$(yq -r '.repo.visibility' "$YAML_FILE")
 GITHUB_USER=$(gh api user --jq '.login')
 FULL_REPO="$GITHUB_USER/$REPO_NAME"
 
