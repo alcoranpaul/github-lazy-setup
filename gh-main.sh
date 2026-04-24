@@ -4,10 +4,14 @@
 #  Generic GitHub Project Scaffolding Script
 #  Reads from a YAML config file to create:
 #  - GitHub repo
-#  - Branches
 #  - Labels
 #  - Milestones
 #  - Issues
+#
+#  Idempotent — safe to run multiple times.
+#  Existing repos, labels, milestones, and issues
+#  are detected and skipped rather than duplicated.
+#  No automatic cloning — repo stays remote only.
 #
 #  Requirements:
 #  - gh CLI installed and authenticated (gh auth login)
@@ -60,66 +64,43 @@ echo ""
 echo "🚀 Scaffolding: $FULL_REPO"
 echo "============================================================"
 
-# ── 1. CREATE REPO ─────────────────────────────────────────────
+# ── 1. CREATE OR USE EXISTING REPO ────────────────────────────
 echo ""
-echo "📁 Creating repository..."
+echo "📁 Checking repository..."
 
-if [ "$REPO_VISIBILITY" = "public" ]; then
-  gh repo create "$REPO_NAME" \
-    --public \
-    --description "$REPO_DESC" \
-    --clone
+REPO_EXISTS=false
+if gh repo view "$FULL_REPO" &>/dev/null; then
+  REPO_EXISTS=true
+  echo "  ⚠ Repo already exists — skipping creation"
+  echo "  ✔ Using existing repo: $FULL_REPO"
 else
-  gh repo create "$REPO_NAME" \
-    --private \
-    --description "$REPO_DESC" \
-    --clone
+  echo "  Repo not found — creating..."
+  if [ "$REPO_VISIBILITY" = "public" ]; then
+    gh repo create "$REPO_NAME" \
+      --public \
+      --description "$REPO_DESC"
+  else
+    gh repo create "$REPO_NAME" \
+      --private \
+      --description "$REPO_DESC"
+  fi
+  echo "  ✔ Repo created: $FULL_REPO"
+  echo "  ℹ  Run 'gh repo clone $FULL_REPO' when you're ready to work locally"
 fi
 
-cd "$REPO_NAME"
-
-# ── 2. BRANCHES ────────────────────────────────────────────────
-echo ""
-echo "🌿 Setting up branches..."
-
-# Create README so main exists
-cat > README.md << EOF
-# $REPO_NAME
-
-$REPO_DESC
-
----
-*Scaffolded with gh-scaffold.sh*
-EOF
-
-git add README.md
-git commit -m "chore: initial commit"
-git push origin main
-
-# Create additional branches from YAML
-BRANCH_COUNT=$(yq '.branches | length' "$YAML_FILE")
-
-for i in $(seq 0 $(( BRANCH_COUNT - 1 ))); do
-  BRANCH=$(yq ".branches[$i]" "$YAML_FILE")
-  if [ "$BRANCH" != "main" ]; then
-    git checkout -b "$BRANCH"
-    git push origin "$BRANCH"
-    git checkout main
-    echo "  ✔ Branch: $BRANCH"
-  fi
-done
-
-echo "✅ Branches created"
 
 # ── 3. LABELS ──────────────────────────────────────────────────
 echo ""
 echo "🏷  Creating labels..."
 
-# Delete GitHub's default labels first for a clean slate
+# Delete GitHub's default labels for a clean slate
 DEFAULT_LABELS=("bug" "documentation" "duplicate" "enhancement" "good first issue" "help wanted" "invalid" "question" "wontfix")
 for label in "${DEFAULT_LABELS[@]}"; do
   gh label delete "$label" --repo "$FULL_REPO" --yes 2>/dev/null || true
 done
+
+# Fetch all existing label names once
+EXISTING_LABELS=$(gh label list --repo "$FULL_REPO" --json name --jq '.[].name')
 
 LABEL_COUNT=$(yq '.labels | length' "$YAML_FILE")
 
@@ -128,23 +109,25 @@ for i in $(seq 0 $(( LABEL_COUNT - 1 ))); do
   COLOR=$(yq ".labels[$i].color" "$YAML_FILE")
   DESC=$(yq ".labels[$i].description" "$YAML_FILE")
 
-  gh label create "$NAME" \
-    --color "$COLOR" \
-    --description "$DESC" \
-    --repo "$FULL_REPO" 2>/dev/null || \
-  gh label edit "$NAME" \
-    --color "$COLOR" \
-    --description "$DESC" \
-    --repo "$FULL_REPO" 2>/dev/null || true
-
-  echo "  ✔ Label: $NAME"
+  if echo "$EXISTING_LABELS" | grep -qx "$NAME"; then
+    echo "  ⚠ Label already exists — skipping: $NAME"
+  else
+    gh label create "$NAME" \
+      --color "$COLOR" \
+      --description "$DESC" \
+      --repo "$FULL_REPO" 2>/dev/null || true
+    echo "  ✔ Label created: $NAME"
+  fi
 done
 
-echo "✅ Labels created"
+echo "✅ Labels done"
 
 # ── 4. MILESTONES ──────────────────────────────────────────────
 echo ""
 echo "🎯 Creating milestones..."
+
+# Fetch all existing milestone titles once
+EXISTING_MILESTONES=$(gh api repos/$FULL_REPO/milestones --jq '.[].title')
 
 MILESTONE_COUNT=$(yq '.milestones | length' "$YAML_FILE")
 
@@ -153,25 +136,31 @@ for i in $(seq 0 $(( MILESTONE_COUNT - 1 ))); do
   DESC=$(yq ".milestones[$i].description" "$YAML_FILE")
   DUE=$(yq ".milestones[$i].due_date // \"\"" "$YAML_FILE")
 
-  if [ -n "$DUE" ] && [ "$DUE" != "null" ]; then
-    gh api repos/$FULL_REPO/milestones --method POST \
-      --field title="$TITLE" \
-      --field description="$DESC" \
-      --field due_on="${DUE}T00:00:00Z" > /dev/null
+  if echo "$EXISTING_MILESTONES" | grep -qx "$TITLE"; then
+    echo "  ⚠ Milestone already exists — skipping: $TITLE"
   else
-    gh api repos/$FULL_REPO/milestones --method POST \
-      --field title="$TITLE" \
-      --field description="$DESC" > /dev/null
+    if [ -n "$DUE" ] && [ "$DUE" != "null" ]; then
+      gh api repos/$FULL_REPO/milestones --method POST \
+        --field title="$TITLE" \
+        --field description="$DESC" \
+        --field due_on="${DUE}T00:00:00Z" > /dev/null
+    else
+      gh api repos/$FULL_REPO/milestones --method POST \
+        --field title="$TITLE" \
+        --field description="$DESC" > /dev/null
+    fi
+    echo "  ✔ Milestone created: $TITLE"
   fi
-
-  echo "  ✔ Milestone: $TITLE"
 done
 
-echo "✅ Milestones created"
+echo "✅ Milestones done"
 
 # ── 5. ISSUES ──────────────────────────────────────────────────
 echo ""
 echo "📋 Creating issues..."
+
+# Fetch all existing open issue titles once
+EXISTING_ISSUES=$(gh issue list --repo "$FULL_REPO" --state open --limit 500 --json title --jq '.[].title')
 
 ISSUE_COUNT=$(yq '.issues | length' "$YAML_FILE")
 
@@ -179,35 +168,38 @@ for i in $(seq 0 $(( ISSUE_COUNT - 1 ))); do
   TITLE=$(yq ".issues[$i].title" "$YAML_FILE")
   BODY=$(yq ".issues[$i].body" "$YAML_FILE")
   MILESTONE=$(yq ".issues[$i].milestone" "$YAML_FILE")
-  
-  # Build labels string (comma separated)
-  LABEL_COUNT_I=$(yq ".issues[$i].labels | length" "$YAML_FILE")
-  LABELS=""
-  for j in $(seq 0 $(( LABEL_COUNT_I - 1 ))); do
-    L=$(yq ".issues[$i].labels[$j]" "$YAML_FILE")
-    if [ -z "$LABELS" ]; then
-      LABELS="$L"
-    else
-      LABELS="$LABELS,$L"
+
+  if echo "$EXISTING_ISSUES" | grep -qx "$TITLE"; then
+    echo "  ⚠ Issue already exists — skipping: $TITLE"
+  else
+    # Build labels string (comma separated)
+    LABEL_COUNT_I=$(yq ".issues[$i].labels | length" "$YAML_FILE")
+    LABELS=""
+    for j in $(seq 0 $(( LABEL_COUNT_I - 1 ))); do
+      L=$(yq ".issues[$i].labels[$j]" "$YAML_FILE")
+      if [ -z "$LABELS" ]; then
+        LABELS="$L"
+      else
+        LABELS="$LABELS,$L"
+      fi
+    done
+
+    CMD="gh issue create --title \"$TITLE\" --body \"$BODY\" --repo $FULL_REPO"
+
+    if [ -n "$MILESTONE" ] && [ "$MILESTONE" != "null" ]; then
+      CMD="$CMD --milestone \"$MILESTONE\""
     fi
-  done
 
-  # Build gh command
-  CMD="gh issue create --title \"$TITLE\" --body \"$BODY\" --repo $FULL_REPO"
-  
-  if [ -n "$MILESTONE" ] && [ "$MILESTONE" != "null" ]; then
-    CMD="$CMD --milestone \"$MILESTONE\""
+    if [ -n "$LABELS" ]; then
+      CMD="$CMD --label \"$LABELS\""
+    fi
+
+    eval $CMD > /dev/null
+    echo "  ✔ Issue created: $TITLE"
   fi
-
-  if [ -n "$LABELS" ]; then
-    CMD="$CMD --label \"$LABELS\""
-  fi
-
-  eval $CMD > /dev/null
-  echo "  ✔ Issue: $TITLE"
 done
 
-echo "✅ Issues created"
+echo "✅ Issues done"
 
 # ── DONE ───────────────────────────────────────────────────────
 echo ""
