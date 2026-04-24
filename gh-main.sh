@@ -102,12 +102,12 @@ done
 # Fetch all existing label names once
 EXISTING_LABELS=$(gh label list --repo "$FULL_REPO" --json name --jq '.[].name')
 
-LABEL_COUNT=$(yq '.labels | length' "$YAML_FILE")
+LABEL_COUNT=$(yq -r '.labels | length' "$YAML_FILE")
 
 for i in $(seq 0 $(( LABEL_COUNT - 1 ))); do
-  NAME=$(yq ".labels[$i].name" "$YAML_FILE")
-  COLOR=$(yq ".labels[$i].color" "$YAML_FILE")
-  DESC=$(yq ".labels[$i].description" "$YAML_FILE")
+  NAME=$(yq -r ".labels[$i].name" "$YAML_FILE")
+  COLOR=$(yq -r ".labels[$i].color" "$YAML_FILE")
+  DESC=$(yq -r ".labels[$i].description" "$YAML_FILE")
 
   if echo "$EXISTING_LABELS" | grep -qx "$NAME"; then
     echo "  ⚠ Label already exists — skipping: $NAME"
@@ -129,12 +129,12 @@ echo "🎯 Creating milestones..."
 # Fetch all existing milestone titles once
 EXISTING_MILESTONES=$(gh api repos/$FULL_REPO/milestones --jq '.[].title')
 
-MILESTONE_COUNT=$(yq '.milestones | length' "$YAML_FILE")
+MILESTONE_COUNT=$(yq -r '.milestones | length' "$YAML_FILE")
 
 for i in $(seq 0 $(( MILESTONE_COUNT - 1 ))); do
-  TITLE=$(yq ".milestones[$i].title" "$YAML_FILE")
-  DESC=$(yq ".milestones[$i].description" "$YAML_FILE")
-  DUE=$(yq ".milestones[$i].due_date // \"\"" "$YAML_FILE")
+  TITLE=$(yq -r ".milestones[$i].title" "$YAML_FILE")
+  DESC=$(yq -r ".milestones[$i].description" "$YAML_FILE")
+  DUE=$(yq -r ".milestones[$i].due_date // \"null\"" "$YAML_FILE")
 
   if echo "$EXISTING_MILESTONES" | grep -qx "$TITLE"; then
     echo "  ⚠ Milestone already exists — skipping: $TITLE"
@@ -162,21 +162,21 @@ echo "📋 Creating issues..."
 # Fetch all existing open issue titles once
 EXISTING_ISSUES=$(gh issue list --repo "$FULL_REPO" --state open --limit 500 --json title --jq '.[].title')
 
-ISSUE_COUNT=$(yq '.issues | length' "$YAML_FILE")
+ISSUE_COUNT=$(yq -r '.issues | length' "$YAML_FILE")
 
 for i in $(seq 0 $(( ISSUE_COUNT - 1 ))); do
-  TITLE=$(yq ".issues[$i].title" "$YAML_FILE")
-  BODY=$(yq ".issues[$i].body" "$YAML_FILE")
-  MILESTONE=$(yq ".issues[$i].milestone" "$YAML_FILE")
+  TITLE=$(yq -r ".issues[$i].title" "$YAML_FILE")
+  BODY=$(yq -r ".issues[$i].body" "$YAML_FILE")
+  MILESTONE=$(yq -r ".issues[$i].milestone" "$YAML_FILE")
 
   if echo "$EXISTING_ISSUES" | grep -qx "$TITLE"; then
     echo "  ⚠ Issue already exists — skipping: $TITLE"
   else
     # Build labels string (comma separated)
-    LABEL_COUNT_I=$(yq ".issues[$i].labels | length" "$YAML_FILE")
+    LABEL_COUNT_I=$(yq -r ".issues[$i].labels | length" "$YAML_FILE")
     LABELS=""
     for j in $(seq 0 $(( LABEL_COUNT_I - 1 ))); do
-      L=$(yq ".issues[$i].labels[$j]" "$YAML_FILE")
+      L=$(yq -r ".issues[$i].labels[$j]" "$YAML_FILE")
       if [ -z "$LABELS" ]; then
         LABELS="$L"
       else
