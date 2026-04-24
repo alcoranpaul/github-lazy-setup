@@ -184,17 +184,22 @@ for i in $(seq 0 $(( ISSUE_COUNT - 1 ))); do
       fi
     done
 
-    CMD="gh issue create --title \"$TITLE\" --body \"$BODY\" --repo $FULL_REPO"
+    # Build command as array — safe against special chars in title/body
+    CMD_ARGS=(gh issue create
+      --title "$TITLE"
+      --body "$BODY"
+      --repo "$FULL_REPO"
+    )
 
     if [ -n "$MILESTONE" ] && [ "$MILESTONE" != "null" ]; then
-      CMD="$CMD --milestone \"$MILESTONE\""
+      CMD_ARGS+=(--milestone "$MILESTONE")
     fi
 
     if [ -n "$LABELS" ]; then
-      CMD="$CMD --label \"$LABELS\""
+      CMD_ARGS+=(--label "$LABELS")
     fi
 
-    eval $CMD > /dev/null
+    "${CMD_ARGS[@]}" > /dev/null
     echo "  ✔ Issue created: $TITLE"
   fi
 done
