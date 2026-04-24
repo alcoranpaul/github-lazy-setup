@@ -1,0 +1,18 @@
+# ── OS Files ──────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Editor & IDE ──────────────────────────────────────────────
+.vscode/settings.json
+.idea/
+
+# ── Logs ──────────────────────────────────────────────────────
+*.log
+
+# ── Personal YAML configs ──────────────────────────────────────
+# Your project YAML files may contain private repo names/descriptions
+# you don't want public. Uncomment below to ignore all YAMLs
+# except the included example file.
+# *.yaml
+# !example.yaml
